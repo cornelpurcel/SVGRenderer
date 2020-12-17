@@ -12,6 +12,7 @@ class SVGRenderer:
         self.outputFile = None
         self.width = None
         self.height = None
+        self.units = None
 
     def load(self, filePath):
         tree = ET.parse(filePath)
@@ -65,11 +66,22 @@ class SVGRenderer:
 
 
     def _initializeDimensions(self, root):
-        self.width = root.get("width")
-        self.height = root.get("height")
-        if self.width.endswith("mm"):
-            self.width = ceil(int(self.width.strip('m')) * self.MM_TO_PIXEL)
-            self.height = ceil(int(self.height.strip('m')) * self.MM_TO_PIXEL)
+        width = root.get("width")
+        height = root.get("height")
+        if width.endswith("mm"):
+            self.width = ceil(int(width.strip('m')) * self.MM_TO_PIXEL)
+            self.height = ceil(int(height.strip('m')) * self.MM_TO_PIXEL)
+            self.units = "mm"
+        else:
+            try:
+                self.width = ceil(int(width.strip()) * self.MM_TO_PIXEL)
+                self.height = ceil(int(height.strip()) * self.MM_TO_PIXEL)
+                self.units = "px"
+            except:
+                print("Nu s-au putut initializa dimensiunile")
+                return None
+
         print("W: {}, H: {}".format(self.width, self.height))
         self.image = 255 * np.ones((self.height, self.width, 3), dtype=np.uint8)
+        return self.width, self.height
 
