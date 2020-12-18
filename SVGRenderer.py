@@ -1,7 +1,6 @@
 import xml.etree.ElementTree as ET
 from math import ceil
-import cv2
-import numpy as np
+from PIL import Image, ImageDraw
 
 
 class SVGRenderer:
@@ -13,12 +12,13 @@ class SVGRenderer:
         self.width = None
         self.height = None
         self.units = None
+        self.image = None
 
     def load(self, filePath):
         tree = ET.parse(filePath)
 
         root = tree.getroot()
-        ET.dump(root)
+        # ET.dump(root)
         self._initializeDimensions(root)
 
         # print(root.find(".//{http://www.w3.org/2000/svg}g"))
@@ -29,25 +29,33 @@ class SVGRenderer:
     def render(self):
         for element in self.elements:
             elementName = element.tag.split('}')[-1].lower()
+            attributes = element.attrib
+            style = {}
+            if attributes.get('style', None):
+                style = {pair.split(':')[0]: pair.split(':')[1] for pair in attributes['style'].split(";")}
+                del attributes['style']
             if elementName == "circle":
-                self._drawCircle(**element.attrib)
+                self._drawCircle(**attributes, **style)
             elif elementName == 'ellipse':
-                self._drawEllipse(**element.attrib)
+                self._drawEllipse(**attributes, **style)
             elif elementName == 'square':
-                self._drawSquare(**element.attrib)
+                self._drawSquare(**attributes, **style)
             elif elementName == 'rect':
-                self._drawRect(**element.attrib)
+                self._drawRect(**attributes, **style)
             elif elementName == 'line':
-                self._drawLine(**element.attrib)
+                self._drawLine(**attributes, **style)
             elif elementName == 'polyline':
-                self._drawPolyline(**element.attrib)
+                self._drawPolyline(**attributes, **style)
+        self.image.save("test.png")
+        self.image.show()
 
-        cv2.imwrite("esketit.jpg", self.image)
-
-    def _drawCircle(self, **params): ## TODO ADD STYLE SUPPORT
+    def _drawCircle(self, **params):
         print(params)
-        cx, cy, r = float(params['cx']) * self.MM_TO_PIXEL, float(params['cy']) * self.MM_TO_PIXEL, float(params['r']) * self.MM_TO_PIXEL
-        self.image = cv2.circle(self.image, (int(cx), int(cy)), int(r), (0, 0, 0), thickness=-1)
+        cx = self._convertToPixels(float(params['cx']))
+        cy = self._convertToPixels(float(params['cy']))
+        r = self._convertToPixels(float(params['r']))
+        fillColor = self._getColorFromHex(params.get('fill', None))
+        self.drawHandle.ellipse([(cx - r, cy - r), (cx + r, cy + r)], fill=fillColor)
 
     def _drawSquare(self, **params): # TODO
         pass
@@ -64,6 +72,25 @@ class SVGRenderer:
     def _drawPolyline(self, **params): # TODO
         pass
 
+    def _convertToPixels(self, size):
+        if self.units == 'mm':
+            return int(self.MM_TO_PIXEL * size)
+        elif self.units == 'px':
+            return int(size)
+
+    def _getColorFromHex(self, hexColor):
+        if hexColor is None:
+            return 0, 0, 0
+        hexColor = hexColor.strip('#')
+        values = {'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
+                  '8': 8, '9': 9, 'a': 10, 'b': 11, 'c': 12, 'd': 13, 'e': 14, 'f': 15}
+        r, g, b = 0, 0, 0
+        if len(hexColor) == 6:
+            r = values[hexColor[0]] * 16 + values[hexColor[1]]
+            g = values[hexColor[2]] * 16 + values[hexColor[3]]
+            b = values[hexColor[4]] * 16 + values[hexColor[5]]
+        # print ("RGB FOR {} IS {}".format(hexColor, (r, g, b)))
+        return r, g, b
 
     def _initializeDimensions(self, root):
         width = root.get("width")
@@ -82,6 +109,7 @@ class SVGRenderer:
                 return None
 
         print("W: {}, H: {}".format(self.width, self.height))
-        self.image = 255 * np.ones((self.height, self.width, 3), dtype=np.uint8)
+        self.image = Image.new("RGBA", (self.width, self.height), None)
+        self.drawHandle = ImageDraw.Draw(self.image)
         return self.width, self.height
 
