@@ -38,8 +38,6 @@ class SVGRenderer:
                 self._drawCircle(**attributes, **style)
             elif elementName == 'ellipse':
                 self._drawEllipse(**attributes, **style)
-            elif elementName == 'square':
-                self._drawSquare(**attributes, **style)
             elif elementName == 'rect':
                 self._drawRect(**attributes, **style)
             elif elementName == 'line':
@@ -61,9 +59,11 @@ class SVGRenderer:
 
         circleImage = Image.new("RGBA", self.image.size, None)
         drawContext = ImageDraw.Draw(circleImage)
-        drawContext.ellipse([(cx - r - halfStrokeWidth, cy - r - halfStrokeWidth), (cx + r + halfStrokeWidth, cy + r + halfStrokeWidth)],
+        drawContext.ellipse([(cx - r - halfStrokeWidth, cy - r - halfStrokeWidth),
+                             (cx + r + halfStrokeWidth, cy + r + halfStrokeWidth)],
                             fill=(*strokeColor, opacity))
-        drawContext.ellipse([(cx - r + halfStrokeWidth, cy - r + halfStrokeWidth), (cx + r - halfStrokeWidth, cy + r - halfStrokeWidth)],
+        drawContext.ellipse([(cx - r + halfStrokeWidth, cy - r + halfStrokeWidth),
+                             (cx + r - halfStrokeWidth, cy + r - halfStrokeWidth)],
                             fill=(*fillColor, opacity))
 
         self.image = Image.alpha_composite(self.image, circleImage)
@@ -90,11 +90,29 @@ class SVGRenderer:
 
         self.image = Image.alpha_composite(self.image, ellipseImage)
 
-    def _drawSquare(self, **params): # TODO
-        pass
+    def _drawRect(self, **params):
+        x = self._convertToPixels(params['x'])
+        y = self._convertToPixels(params['y'])
+        height = self._convertToPixels(params['height'])
+        width = self._convertToPixels(params['width'])
+        fillColor = self._getColorFromHex(params.get('fill', None))
+        strokeColor = self._getColorFromHex(params.get("stroke", None))
+        strokeWidth = self._convertToPixels(params.get("stroke-width", None))
+        halfStrokeWidth = strokeWidth // 2
+        opacity = self._opacityToAlpha(params.get("opacity", None))
 
-    def _drawRect(self, **params): # TODO
-        pass
+        rectImage = Image.new("RGBA", self.image.size, None)
+        drawContext = ImageDraw.Draw(rectImage)
+
+        drawContext.rectangle(
+            [(x - halfStrokeWidth, y - halfStrokeWidth), (x + width + halfStrokeWidth, y + height + halfStrokeWidth)],
+            fill=(*strokeColor, opacity))
+        drawContext.rectangle(
+            [(x + halfStrokeWidth, y + halfStrokeWidth), (x + width - halfStrokeWidth, y + height - halfStrokeWidth)],
+            fill=(*fillColor, opacity))
+
+        self.image = Image.alpha_composite(self.image, rectImage)
+
 
     def _drawLine(self, **params): # TODO
         pass
@@ -111,7 +129,7 @@ class SVGRenderer:
         elif self.units == 'px':
             return int(size)
 
-    def _getColorFromHex(self, hexColor):
+    def _getColorFromHex(self, hexColor): # TODO add support for other formats
         if hexColor is None:
             return 0, 0, 0
         hexColor = hexColor.strip('#')
