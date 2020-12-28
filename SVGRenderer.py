@@ -57,8 +57,7 @@ class SVGRenderer:
         strokeColor = self._getColorFromHex(params.get("stroke", None))
         strokeWidth = self._convertToPixels(params.get("stroke-width", None))
         halfStrokeWidth = strokeWidth // 2
-        opacity = params.get("opacity", None)
-        opacity = self._opacityToAlpha(opacity)
+        opacity = self._opacityToAlpha(params.get("opacity", None))
 
         circleImage = Image.new("RGBA", self.image.size, None)
         drawContext = ImageDraw.Draw(circleImage)
@@ -69,13 +68,32 @@ class SVGRenderer:
 
         self.image = Image.alpha_composite(self.image, circleImage)
 
+    def _drawEllipse(self, **params):
+        cx = self._convertToPixels(params['cx'])
+        cy = self._convertToPixels(params['cy'])
+        rx = self._convertToPixels(params['rx'])
+        ry = self._convertToPixels(params['ry'])
+        fillColor = self._getColorFromHex(params.get('fill', None))
+        strokeColor = self._getColorFromHex(params.get("stroke", None))
+        strokeWidth = self._convertToPixels(params.get("stroke-width", None))
+        halfStrokeWidth = strokeWidth // 2
+        opacity = self._opacityToAlpha(params.get("opacity", None))
+
+        ellipseImage = Image.new("RGBA", self.image.size, None)
+        drawContext = ImageDraw.Draw(ellipseImage)
+        drawContext.ellipse([(cx - rx - halfStrokeWidth, cy - ry - halfStrokeWidth),
+                             (cx + rx + halfStrokeWidth, cy + ry + halfStrokeWidth)],
+                            fill=(*strokeColor, opacity))
+        drawContext.ellipse([(cx - rx + halfStrokeWidth, cy - ry + halfStrokeWidth),
+                             (cx + rx - halfStrokeWidth, cy + ry - halfStrokeWidth)],
+                            fill=(*fillColor, opacity))
+
+        self.image = Image.alpha_composite(self.image, ellipseImage)
+
     def _drawSquare(self, **params): # TODO
         pass
 
     def _drawRect(self, **params): # TODO
-        pass
-
-    def _drawEllipse(self, **params): # TODO
         pass
 
     def _drawLine(self, **params): # TODO
