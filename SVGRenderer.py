@@ -47,15 +47,27 @@ class SVGRenderer:
             elif elementName == 'polyline':
                 self._drawPolyline(**attributes, **style)
         self.image.save("test.png")
-        self.image.show()
+        # self.image.show()
 
     def _drawCircle(self, **params):
-        print(params)
-        cx = self._convertToPixels(float(params['cx']))
-        cy = self._convertToPixels(float(params['cy']))
-        r = self._convertToPixels(float(params['r']))
+        cx = self._convertToPixels(params['cx'])
+        cy = self._convertToPixels(params['cy'])
+        r = self._convertToPixels(params['r'])
         fillColor = self._getColorFromHex(params.get('fill', None))
-        self.drawHandle.ellipse([(cx - r, cy - r), (cx + r, cy + r)], fill=fillColor)
+        strokeColor = self._getColorFromHex(params.get("stroke", None))
+        strokeWidth = self._convertToPixels(params.get("stroke-width", None))
+        halfStrokeWidth = strokeWidth // 2
+        opacity = params.get("opacity", None)
+        opacity = self._opacityToAlpha(opacity)
+
+        circleImage = Image.new("RGBA", self.image.size, None)
+        drawContext = ImageDraw.Draw(circleImage)
+        drawContext.ellipse([(cx - r - halfStrokeWidth, cy - r - halfStrokeWidth), (cx + r + halfStrokeWidth, cy + r + halfStrokeWidth)],
+                            fill=(*strokeColor, opacity))
+        drawContext.ellipse([(cx - r + halfStrokeWidth, cy - r + halfStrokeWidth), (cx + r - halfStrokeWidth, cy + r - halfStrokeWidth)],
+                            fill=(*fillColor, opacity))
+
+        self.image = Image.alpha_composite(self.image, circleImage)
 
     def _drawSquare(self, **params): # TODO
         pass
@@ -73,6 +85,9 @@ class SVGRenderer:
         pass
 
     def _convertToPixels(self, size):
+        if not size:
+            return 0
+        size = float(size)
         if self.units == 'mm':
             return int(self.MM_TO_PIXEL * size)
         elif self.units == 'px':
@@ -91,6 +106,12 @@ class SVGRenderer:
             b = values[hexColor[4]] * 16 + values[hexColor[5]]
         # print ("RGB FOR {} IS {}".format(hexColor, (r, g, b)))
         return r, g, b
+
+    def _opacityToAlpha(self, opacity):
+        if opacity:
+            return int(float(opacity) * 255)
+        else:
+            return 255
 
     def _initializeDimensions(self, root):
         width = root.get("width")
