@@ -45,7 +45,7 @@ class SVGRenderer:
             elif elementName == 'polyline':
                 self._drawPolyline(**attributes, **style)
         self.image.save("test.png")
-        # self.image.show()
+        self.image.show()
 
     def _drawCircle(self, **params):
         cx = self._convertToPixels(params['cx'])
@@ -115,7 +115,19 @@ class SVGRenderer:
 
 
     def _drawLine(self, **params): # TODO
-        pass
+        x1 = self._convertToPixels(params['x1'])
+        y1 = self._convertToPixels(params['y1'])
+        x2 = self._convertToPixels(params['x2'])
+        y2 = self._convertToPixels(params['y2'])
+        strokeColor = self._getColorFromHex(params.get("stroke", None))
+        strokeWidth = self._convertToPixels(params.get("stroke-width", None))
+        opacity = self._opacityToAlpha(params.get("opacity", None))
+
+        lineImage = Image.new("RGBA", self.image.size, None)
+        drawContext = ImageDraw.Draw(lineImage)
+        drawContext.line([(x1, y1), (x2, y2)], fill=(*strokeColor, opacity), width=strokeWidth)
+
+        self.image = Image.alpha_composite(self.image, lineImage)
 
     def _drawPolyline(self, **params): # TODO
         pass
@@ -132,16 +144,22 @@ class SVGRenderer:
     def _getColorFromHex(self, hexColor): # TODO add support for other formats
         if hexColor is None:
             return 0, 0, 0
-        hexColor = hexColor.strip('#')
-        values = {'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
-                  '8': 8, '9': 9, 'a': 10, 'b': 11, 'c': 12, 'd': 13, 'e': 14, 'f': 15}
-        r, g, b = 0, 0, 0
-        if len(hexColor) == 6:
-            r = values[hexColor[0]] * 16 + values[hexColor[1]]
-            g = values[hexColor[2]] * 16 + values[hexColor[3]]
-            b = values[hexColor[4]] * 16 + values[hexColor[5]]
-        # print ("RGB FOR {} IS {}".format(hexColor, (r, g, b)))
-        return r, g, b
+        if hexColor.startswith("rgb"):
+            hexColor = hexColor[4:-1].split(',')
+            if len(hexColor) != 3:
+                return 0, 0, 0
+            return int(hexColor[0]), int(hexColor[1]), int(hexColor[2])
+        elif hexColor.startswith("#"):
+            hexColor = hexColor.strip('#')
+            values = {'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
+                      '8': 8, '9': 9, 'a': 10, 'b': 11, 'c': 12, 'd': 13, 'e': 14, 'f': 15}
+            r, g, b = 0, 0, 0
+            if len(hexColor) == 6:
+                r = values[hexColor[0]] * 16 + values[hexColor[1]]
+                g = values[hexColor[2]] * 16 + values[hexColor[3]]
+                b = values[hexColor[4]] * 16 + values[hexColor[5]]
+            # print ("RGB FOR {} IS {}".format(hexColor, (r, g, b)))
+            return r, g, b
 
     def _opacityToAlpha(self, opacity):
         if opacity:
