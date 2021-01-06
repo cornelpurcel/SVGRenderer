@@ -217,6 +217,17 @@ class SVGRenderer:
                 lastPoint = point3
                 lastOperation = 'c'
                 index += 4
+            elif tokens[index] == "C" or (tokens[index] not in operations and lastOperation == 'C'):
+                if tokens[index] not in operations:
+                    index -= 1
+                point1 = self._getPoints(tokens[index + 1])
+                point2 = self._getPoints(tokens[index + 2])
+                point3 = self._getPoints(tokens[index + 3])
+                drawBezier([lastPoint, point1, point2, point3], drawContext, width=strokeWidth,
+                           fill=(*strokeColor, opacity))
+                lastPoint = point3
+                lastOperation = 'C'
+                index += 4
             else:
                 index += 1
         self.image = Image.alpha_composite(self.image, pathImage)
