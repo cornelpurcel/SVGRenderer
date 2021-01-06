@@ -44,6 +44,8 @@ class SVGRenderer:
                 self._drawLine(**attributes, **style)
             elif elementName == 'polyline':
                 self._drawPolyline(**attributes, **style)
+            elif elementName == 'path':
+                self._drawPath(**attributes, **style)
         self.image.save("test.png")
         self.image.show()
 
@@ -114,7 +116,7 @@ class SVGRenderer:
         self.image = Image.alpha_composite(self.image, rectImage)
 
 
-    def _drawLine(self, **params): # TODO
+    def _drawLine(self, **params):
         x1 = self._convertToPixels(params['x1'])
         y1 = self._convertToPixels(params['y1'])
         x2 = self._convertToPixels(params['x2'])
@@ -132,16 +134,95 @@ class SVGRenderer:
     def _drawPolyline(self, **params): # TODO
         pass
 
+    def _drawPath(self, **params):
+        strokeColor = self._getColorFromHex(params.get("stroke", None))
+        strokeWidth = self._convertToPixels(params.get("stroke-width", None))
+        opacity = self._opacityToAlpha(params.get("opacity", None))
+        def getPoints(text):
+            points = text.split(',')
+            return self._convertToPixels(points[0]), self._convertToPixels(points[1])
+
+        def drawBezier(points, drawContext, width, fill):
+            xu, yu, u = 0.0, 0.0, 0.0
+            lastPoint = points[0]
+            while u <= 1:
+                xu = (1 - u) ** 3 * points[0][0] + 3 * u * (1 - u) ** 2 * points[1][0] + \
+                     3 * (1 - u) * u ** 2 * points[2][0] + u ** 3 * points[3][0]
+                yu = (1 - u) ** 3 * points[0][1] + 3 * u * (1 - u) ** 2 * points[1][1] + \
+                     3 * (1 - u) * u ** 2 * points[2][1] + u ** 3 * points[3][1]
+                drawContext.line([lastPoint, (int(xu), int(yu))], width=width, fill=fill)
+                lastPoint = (int(xu), int(yu))
+                u += 0.001
+
+        operations = ('m', 'M', 'C', 'c', 'z')
+        pathImage = Image.new("RGBA", self.image.size, None)
+        drawContext = ImageDraw.Draw(pathImage)
+        tokens = params['d'].split()
+        index = 0
+        lastPoint = (0, 0)
+        firstPoint = (0, 0)
+        lastOperation = ''
+        while index < len(tokens):
+            print("Checking ", tokens[index])
+            if tokens[index] in ('z', 'Z'):
+                drawContext.line([lastPoint, firstPoint], width=strokeWidth, fill=(*strokeColor, opacity))
+                break
+            elif tokens[index] == "M" or (tokens[index] not in operations and lastOperation == 'M'):
+                if tokens[index] not in operations:
+                    index -= 1
+                newPoint = getPoints(tokens[index + 1])
+                if index != 0:
+                    drawContext.line([lastPoint, newPoint], width=strokeWidth, fill=(*strokeColor, opacity))
+                else:
+                    firstPoint = newPoint
+                lastPoint = newPoint
+                lastOperation = 'M'
+                index += 2
+            elif tokens[index] == "m" or (tokens[index] not in operations and lastOperation == 'm'):
+                if tokens[index] not in operations:
+                    index -= 1
+                diffPoint = getPoints(tokens[index+1])
+                newPoint = lastPoint[0] + diffPoint[0], lastPoint[1] + diffPoint[1]
+                if index != 0:
+                    drawContext.line([lastPoint, newPoint], width=strokeWidth, fill=(*strokeColor, opacity))
+                else:
+                    firstPoint = newPoint
+                lastPoint = newPoint
+                lastOperation = 'm'
+                index += 2
+            elif tokens[index] == "c" or (tokens[index] not in operations and lastOperation == 'c'):
+                if tokens[index] not in operations:
+                    index -= 1
+                diffPoint = getPoints(tokens[index + 1])
+                point1 = lastPoint[0] + diffPoint[0], lastPoint[1] + diffPoint[1]
+                diffPoint = getPoints(tokens[index + 2])
+                point2 = lastPoint[0] + diffPoint[0], lastPoint[1] + diffPoint[1]
+                diffPoint = getPoints(tokens[index + 3])
+                point3 = lastPoint[0] + diffPoint[0], lastPoint[1] + diffPoint[1]
+                drawBezier([lastPoint, point1, point2, point3], drawContext, width=strokeWidth, fill=(*strokeColor, opacity))
+                lastPoint = point3
+                lastOperation = 'c'
+                index += 4
+            else:
+                index += 1
+        self.image = Image.alpha_composite(self.image, pathImage)
+
     def _convertToPixels(self, size):
         if not size:
             return 0
-        size = float(size)
+        try:
+            size = float(size)
+        except ValueError:
+            if size.endswith("mm"):
+                return int(self.MM_TO_PIXEL * float(size[:-2]))
+            elif size.endswith('px'):
+                return int(float(size[:-2]))
         if self.units == 'mm':
             return int(self.MM_TO_PIXEL * size)
         elif self.units == 'px':
             return int(size)
 
-    def _getColorFromHex(self, hexColor): # TODO add support for other formats
+    def _getColorFromHex(self, hexColor):
         if hexColor is None:
             return 0, 0, 0
         if hexColor.startswith("rgb"):
