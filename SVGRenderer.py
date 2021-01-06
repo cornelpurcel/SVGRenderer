@@ -132,15 +132,29 @@ class SVGRenderer:
         self.image = Image.alpha_composite(self.image, lineImage)
 
     def _drawPolyline(self, **params): # TODO
-        pass
+        strokeColor = self._getColorFromHex(params.get("stroke", None))
+        strokeWidth = self._convertToPixels(params.get("stroke-width", None))
+        opacity = self._opacityToAlpha(params.get("opacity", None))
+
+        points = params.get("points", None)
+        if not points:
+            return
+        polylineImage = Image.new("RGBA", self.image.size, None)
+        drawContext = ImageDraw.Draw(polylineImage)
+        points = points.split()
+        lastPoint = self._getPoints(points[0])
+        for index in range(1, len(points)):
+            currentPoint = self._getPoints(points[index])
+            drawContext.line([lastPoint, currentPoint], fill=(*strokeColor, opacity), width = strokeWidth)
+            lastPoint = currentPoint
+
+        self.image = Image.alpha_composite(self.image, polylineImage)
+
 
     def _drawPath(self, **params):
         strokeColor = self._getColorFromHex(params.get("stroke", None))
         strokeWidth = self._convertToPixels(params.get("stroke-width", None))
         opacity = self._opacityToAlpha(params.get("opacity", None))
-        def getPoints(text):
-            points = text.split(',')
-            return self._convertToPixels(points[0]), self._convertToPixels(points[1])
 
         def drawBezier(points, drawContext, width, fill):
             xu, yu, u = 0.0, 0.0, 0.0
@@ -170,7 +184,7 @@ class SVGRenderer:
             elif tokens[index] == "M" or (tokens[index] not in operations and lastOperation == 'M'):
                 if tokens[index] not in operations:
                     index -= 1
-                newPoint = getPoints(tokens[index + 1])
+                newPoint = self._getPoints(tokens[index + 1])
                 if index != 0:
                     drawContext.line([lastPoint, newPoint], width=strokeWidth, fill=(*strokeColor, opacity))
                 else:
@@ -181,7 +195,7 @@ class SVGRenderer:
             elif tokens[index] == "m" or (tokens[index] not in operations and lastOperation == 'm'):
                 if tokens[index] not in operations:
                     index -= 1
-                diffPoint = getPoints(tokens[index+1])
+                diffPoint = self._getPoints(tokens[index+1])
                 newPoint = lastPoint[0] + diffPoint[0], lastPoint[1] + diffPoint[1]
                 if index != 0:
                     drawContext.line([lastPoint, newPoint], width=strokeWidth, fill=(*strokeColor, opacity))
@@ -193,11 +207,11 @@ class SVGRenderer:
             elif tokens[index] == "c" or (tokens[index] not in operations and lastOperation == 'c'):
                 if tokens[index] not in operations:
                     index -= 1
-                diffPoint = getPoints(tokens[index + 1])
+                diffPoint = self._getPoints(tokens[index + 1])
                 point1 = lastPoint[0] + diffPoint[0], lastPoint[1] + diffPoint[1]
-                diffPoint = getPoints(tokens[index + 2])
+                diffPoint = self._getPoints(tokens[index + 2])
                 point2 = lastPoint[0] + diffPoint[0], lastPoint[1] + diffPoint[1]
-                diffPoint = getPoints(tokens[index + 3])
+                diffPoint = self._getPoints(tokens[index + 3])
                 point3 = lastPoint[0] + diffPoint[0], lastPoint[1] + diffPoint[1]
                 drawBezier([lastPoint, point1, point2, point3], drawContext, width=strokeWidth, fill=(*strokeColor, opacity))
                 lastPoint = point3
@@ -206,6 +220,10 @@ class SVGRenderer:
             else:
                 index += 1
         self.image = Image.alpha_composite(self.image, pathImage)
+
+    def _getPoints(self, text):
+        points = text.split(',')
+        return self._convertToPixels(points[0]), self._convertToPixels(points[1])
 
     def _convertToPixels(self, size):
         if not size:
