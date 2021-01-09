@@ -15,18 +15,26 @@ class SVGRenderer:
         self.image = None
 
     def load(self, filePath):
+        """
+        Loads svg file from filePath
+        :param filePath: path of the svg file
+        :return: None
+        """
         tree = ET.parse(filePath)
 
         root = tree.getroot()
-        # ET.dump(root)
         self._initializeDimensions(root)
 
-        # print(root.find(".//{http://www.w3.org/2000/svg}g"))
-        for element in root.find(".//{http://www.w3.org/2000/svg}g"):
-            self.elements.append(element)
-            # ET.dump(element)
+        groups = root.findall(".//{http://www.w3.org/2000/svg}g")
+        for group in groups:
+            for element in group:
+                self.elements.append(element)
 
     def render(self):
+        """
+        Iterates through all the shapes in the document and renders them
+        :return: None
+        """
         for element in self.elements:
             elementName = element.tag.split('}')[-1].lower()
             attributes = element.attrib
@@ -50,6 +58,11 @@ class SVGRenderer:
         self.image.show()
 
     def _drawCircle(self, **params):
+        """
+        Draws a circle according to params
+        :param params: style and other parameters from the circle tag
+        :return: None
+        """
         cx = self._convertToPixels(params['cx'])
         cy = self._convertToPixels(params['cy'])
         r = self._convertToPixels(params['r'])
@@ -71,6 +84,11 @@ class SVGRenderer:
         self.image = Image.alpha_composite(self.image, circleImage)
 
     def _drawEllipse(self, **params):
+        """
+        Draws an ellipse according to params
+        :param params: style and other parameters from the ellipse tag
+        :return: None
+        """
         cx = self._convertToPixels(params['cx'])
         cy = self._convertToPixels(params['cy'])
         rx = self._convertToPixels(params['rx'])
@@ -93,6 +111,11 @@ class SVGRenderer:
         self.image = Image.alpha_composite(self.image, ellipseImage)
 
     def _drawRect(self, **params):
+        """
+        Draws a rectangle according to params
+        :param params: style and other parameters from the rectangle tag
+        :return: None
+        """
         x = self._convertToPixels(params['x'])
         y = self._convertToPixels(params['y'])
         height = self._convertToPixels(params['height'])
@@ -117,6 +140,11 @@ class SVGRenderer:
 
 
     def _drawLine(self, **params):
+        """
+        Draws a line according to params
+        :param params: style and other parameters from the line tag
+        :return: None
+        """
         x1 = self._convertToPixels(params['x1'])
         y1 = self._convertToPixels(params['y1'])
         x2 = self._convertToPixels(params['x2'])
@@ -131,7 +159,12 @@ class SVGRenderer:
 
         self.image = Image.alpha_composite(self.image, lineImage)
 
-    def _drawPolyline(self, **params): # TODO
+    def _drawPolyline(self, **params):
+        """
+        Draws a polyline according to params
+        :param params: style and other parameters from the polyline tag
+        :return: None
+        """
         strokeColor = self._getColorFromHex(params.get("stroke", None))
         strokeWidth = self._convertToPixels(params.get("stroke-width", None))
         opacity = self._opacityToAlpha(params.get("opacity", None))
@@ -152,11 +185,24 @@ class SVGRenderer:
 
 
     def _drawPath(self, **params):
+        """
+        Draws a path according to params
+        :param params: style and other parameters from the path tag
+        :return: None
+        """
         strokeColor = self._getColorFromHex(params.get("stroke", None))
         strokeWidth = self._convertToPixels(params.get("stroke-width", None))
         opacity = self._opacityToAlpha(params.get("opacity", None))
 
         def drawBezier(points, drawContext, width, fill):
+            """
+            Draws a bezier curve
+            :param points: the 4 points (x,y) describing the bezier curve
+            :param drawContext: context in which to draw the curve
+            :param width: width of the curve
+            :param fill: color of the curve
+            :return: None
+            """
             xu, yu, u = 0.0, 0.0, 0.0
             lastPoint = points[0]
             while u <= 1:
@@ -233,10 +279,20 @@ class SVGRenderer:
         self.image = Image.alpha_composite(self.image, pathImage)
 
     def _getPoints(self, text):
+        """
+        Splits and returns points in format (x,y)
+        :param text: string of points in format "x,y x,y ..."
+        :return: the extracted points
+        """
         points = text.split(',')
         return self._convertToPixels(points[0]), self._convertToPixels(points[1])
 
     def _convertToPixels(self, size):
+        """
+        Converts dimension to pixels
+        :param size: dimension, either in mm or px
+        :return: size converted to pixels
+        """
         if not size:
             return 0
         try:
@@ -252,6 +308,11 @@ class SVGRenderer:
             return int(size)
 
     def _getColorFromHex(self, hexColor):
+        """
+        Returns (r,g,b) extracted from hexColor
+        :param hexColor: color either in #ffffff format or rgb(255,255,255)
+        :return: hexColor in (r,g,b) format
+        """
         if hexColor is None:
             return 0, 0, 0
         if hexColor.startswith("rgb"):
@@ -272,12 +333,22 @@ class SVGRenderer:
             return r, g, b
 
     def _opacityToAlpha(self, opacity):
+        """
+        Returns alpha channel value ([0, 255]) from opacity value([0, 1])
+        :param opacity: a value from [0, 1] interval
+        :return: alpha channel value in [0, 255] interval
+        """
         if opacity:
             return int(float(opacity) * 255)
         else:
             return 255
 
     def _initializeDimensions(self, root):
+        """
+        Initializes dimensions for the final image
+        :param root: the <svg> xml tag
+        :return: None
+        """
         width = root.get("width")
         height = root.get("height")
         if width.endswith("mm"):
@@ -286,8 +357,8 @@ class SVGRenderer:
             self.units = "mm"
         else:
             try:
-                self.width = ceil(int(width.strip()) * self.MM_TO_PIXEL)
-                self.height = ceil(int(height.strip()) * self.MM_TO_PIXEL)
+                self.width = ceil(int(width.strip()))
+                self.height = ceil(int(height.strip()))
                 self.units = "px"
             except:
                 print("Nu s-au putut initializa dimensiunile")
