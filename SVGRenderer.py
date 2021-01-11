@@ -208,7 +208,6 @@ class SVGRenderer:
             :param fill: color of the curve
             :return: None
             """
-            print("drawing a bezier on", points)
             xu, yu, u = 0.0, 0.0, 0.0
             lastPoint = points[0]
             while u <= 1:
@@ -229,9 +228,6 @@ class SVGRenderer:
         firstPoint = (0, 0)
         lastOperation = ''
         while index < len(tokens):
-            print("Last point:", lastPoint)
-            print("Checking ", tokens[index])
-
             if tokens[index] in ('z', 'Z'):
                 drawContext.line([lastPoint, firstPoint], width=strokeWidth, fill=(*strokeColor, opacity))
                 break
@@ -371,7 +367,7 @@ class SVGRenderer:
                 print("Nu s-au putut initializa dimensiunile")
                 return None
 
-        print("W: {}, H: {}".format(self.width, self.height))
+        # print("W: {}, H: {}".format(self.width, self.height))
         self.image = Image.new("RGBA", (self.width, self.height), None)
         self.drawHandle = ImageDraw.Draw(self.image)
         return self.width, self.height
