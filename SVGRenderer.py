@@ -192,6 +192,9 @@ class SVGRenderer:
         :param params: style and other parameters from the path tag
         :return: None
         """
+        if "cy" in params.keys() and "cx" in params.keys():
+            self._drawEllipse(**params)
+            return
         strokeColor = self._getColorFromHex(params.get("stroke", None))
         strokeWidth = self._convertToPixels(params.get("stroke-width", None))
         opacity = self._opacityToAlpha(params.get("opacity", None))
@@ -205,6 +208,7 @@ class SVGRenderer:
             :param fill: color of the curve
             :return: None
             """
+            print("drawing a bezier on", points)
             xu, yu, u = 0.0, 0.0, 0.0
             lastPoint = points[0]
             while u <= 1:
@@ -216,7 +220,7 @@ class SVGRenderer:
                 lastPoint = (int(xu), int(yu))
                 u += 0.001
 
-        operations = ('m', 'M', 'C', 'c', 'z')
+        operations = ('m', 'M', 'C', 'c', 'z', 'Z')
         pathImage = Image.new("RGBA", self.image.size, None)
         drawContext = ImageDraw.Draw(pathImage)
         tokens = params['d'].split()
@@ -225,7 +229,9 @@ class SVGRenderer:
         firstPoint = (0, 0)
         lastOperation = ''
         while index < len(tokens):
-            # print("Checking ", tokens[index])
+            print("Last point:", lastPoint)
+            print("Checking ", tokens[index])
+
             if tokens[index] in ('z', 'Z'):
                 drawContext.line([lastPoint, firstPoint], width=strokeWidth, fill=(*strokeColor, opacity))
                 break
@@ -331,7 +337,6 @@ class SVGRenderer:
                 r = values[hexColor[0]] * 16 + values[hexColor[1]]
                 g = values[hexColor[2]] * 16 + values[hexColor[3]]
                 b = values[hexColor[4]] * 16 + values[hexColor[5]]
-            # print ("RGB FOR {} IS {}".format(hexColor, (r, g, b)))
             return r, g, b
 
     def _opacityToAlpha(self, opacity):
@@ -366,7 +371,7 @@ class SVGRenderer:
                 print("Nu s-au putut initializa dimensiunile")
                 return None
 
-        # print("W: {}, H: {}".format(self.width, self.height))
+        print("W: {}, H: {}".format(self.width, self.height))
         self.image = Image.new("RGBA", (self.width, self.height), None)
         self.drawHandle = ImageDraw.Draw(self.image)
         return self.width, self.height
