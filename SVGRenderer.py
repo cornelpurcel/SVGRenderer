@@ -30,11 +30,14 @@ class SVGRenderer:
             for element in group:
                 self.elements.append(element)
 
-    def render(self):
+    def render(self, name):
         """
-        Iterates through all the shapes in the document and renders them
+        Renders the png file
+        :param name: name of the exported png
         :return: None
         """
+        if self.height is None or self.width is None or self.units is None:
+            return None
         for element in self.elements:
             elementName = element.tag.split('}')[-1].lower()
             attributes = element.attrib
@@ -54,8 +57,7 @@ class SVGRenderer:
                 self._drawPolyline(**attributes, **style)
             elif elementName == 'path':
                 self._drawPath(**attributes, **style)
-        self.image.save("test.png")
-        self.image.show()
+        self.image.save(name)
 
     def _drawCircle(self, **params):
         """
@@ -223,7 +225,7 @@ class SVGRenderer:
         firstPoint = (0, 0)
         lastOperation = ''
         while index < len(tokens):
-            print("Checking ", tokens[index])
+            # print("Checking ", tokens[index])
             if tokens[index] in ('z', 'Z'):
                 drawContext.line([lastPoint, firstPoint], width=strokeWidth, fill=(*strokeColor, opacity))
                 break
@@ -364,7 +366,7 @@ class SVGRenderer:
                 print("Nu s-au putut initializa dimensiunile")
                 return None
 
-        print("W: {}, H: {}".format(self.width, self.height))
+        # print("W: {}, H: {}".format(self.width, self.height))
         self.image = Image.new("RGBA", (self.width, self.height), None)
         self.drawHandle = ImageDraw.Draw(self.image)
         return self.width, self.height
