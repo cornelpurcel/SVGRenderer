@@ -4,6 +4,9 @@ from PIL import Image, ImageDraw
 
 
 class SVGRenderer:
+    """
+    Implements the class that renders a .svg into  a .png
+    """
     MM_TO_PIXEL = 3.7795275591
 
     def __init__(self):
